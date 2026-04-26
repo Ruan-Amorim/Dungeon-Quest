@@ -1,0 +1,26 @@
+
+body {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #222;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+}
+canvas {
+    display: flex;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    margin: auto;
+}
+#game {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    background: #f2f2f2;
+}

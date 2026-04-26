@@ -1,0 +1,2 @@
+
+// # Configurações de colisão/filtros
