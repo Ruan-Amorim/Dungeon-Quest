@@ -1,8 +1,10 @@
+import { tilemap } from "./tilemap.js";
 import { player } from "./player.js";
-import keys, { tile, tilemap, updateTile } from "./utils.js";
+import keys, { tile } from "./utils.js";
 const { Engine, Runner, Bodies, Composite, Events } = Matter;
 
 
+let worldScale = 1;
 // Criando motor físico
 const engine = Engine.create();
 
@@ -22,13 +24,19 @@ const camera = {
     y: 0
 };
 function renderLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = false;
+  ctx.save();
+  ctx.scale(worldScale, worldScale);
+
     // atualizar câmera
-    camera.x = ladino.body.position.x - canvas.width / 2;
-    camera.y = ladino.body.position.y - canvas.height / 2;
+    const viewWidth = canvas.clientWidth;
+    const viewHeight = canvas.clientHeight;
+
+    camera.x = ladino.body.position.x - (viewWidth / worldScale) / 2;
+    camera.y = ladino.body.position.y - (viewHeight / worldScale) / 2;
 
     for (let y = 0; y < tilemap.length; y++) {
         for (let x = 0; x < tilemap[y].length; x++) {
@@ -44,7 +52,7 @@ function renderLoop() {
           if (tileValue === 1) {
             ctx.fillStyle = "gray"; // parede
           } else if (tileValue === 0) {
-            ctx.fillStyle = "#f2f2f2";
+            ctx.fillStyle = "#241403";
           }
       
           ctx.fillRect(screenX, screenY, tile, tile);
@@ -76,14 +84,16 @@ function renderLoop() {
         if (body.label === "mob") {
             ctx.fillStyle = "red";
         } else if (body.label === "player") {
-            ctx.fillStyle = "blue";
+            continue
         } else {
             ctx.fillStyle = "gray";
         }
-
         ctx.fill();
     }
-    
+    // Render sprite player
+    ladino.updateAnimation();
+    ladino.draw(ctx, camera);
+    ctx.restore();
     requestAnimationFrame(renderLoop);
 }
 
@@ -104,6 +114,7 @@ for (let y = 0; y < tilemap.length; y++) {
     }
   }
 }
+
 // OBSERVANDO TECLAS
 window.addEventListener("keydown", (e) => {
     let key = e.key.toLocaleLowerCase();
@@ -111,6 +122,10 @@ window.addEventListener("keydown", (e) => {
     if (key === 's' || key === 'arrowdown') keys.down = true;
     if (key === 'a' || key === 'arrowleft') keys.left = true;
     if (key === 'd' || key === 'arrowright') keys.right = true;
+    if ((key === 'j') && !keys.attack) {
+      keys.attack = true;
+      keys.attackPressed = true; // 👈 clique único
+    }
 });
 window.addEventListener("keyup", (e) => {
     let key = e.key.toLocaleLowerCase();
@@ -118,6 +133,9 @@ window.addEventListener("keyup", (e) => {
     if (key === 's' || key === 'arrowdown') keys.down = false;
     if (key === 'a' || key === 'arrowleft') keys.left = false;
     if (key === 'd' || key === 'arrowright') keys.right = false;
+    if (key === 'j') {
+      keys.attack = false;
+    }
 });
 
 // Iniciando o rederizador e o motor
@@ -128,29 +146,26 @@ const ladino = new player(engine)
 
 Events.on(engine, 'beforeUpdate', () => {
     ladino.updateMove(keys);
+
+    ladino.attack(keys);
 })
 
 function resizeCanvas() {
-    const scale = window.devicePixelRatio || 1;
+  const pixelRatio = window.devicePixelRatio || 1;
 
-    canvas.width = window.innerWidth * scale;
-    canvas.height = window.innerHeight * scale;
+  canvas.width = window.innerWidth * pixelRatio;
+  canvas.height = window.innerHeight * pixelRatio;
 
-    canvas.style.width = window.innerWidth + "px";
-    canvas.style.height = window.innerHeight + "px";
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
 
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  // reseta transform
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+  // escala do jogo (NÃO muda o tile)
+  worldScale = Math.max(1, Math.min(window.innerWidth / 800, window.innerHeight / 600));
 }
 
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
-
-window.addEventListener("resize", () => {
-    const newTile = Math.floor(
-        Math.min(window.innerWidth / 25, window.innerHeight / 18)
-    );
-
-    updateTile(newTile);
-});
-
 renderLoop();
