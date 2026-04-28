@@ -14,6 +14,7 @@ export class player {
         this.isAlive = true;
 
         this.isAttacking = false;
+        this.attackArc =  false;
         this.attackStep = 0;
 
         // Criando o corpo físico (avatar)
@@ -32,7 +33,7 @@ export class player {
         this.frameHeight = 100;
         this.flip = false;
 
-        this.frameSpeed = 0.6;
+        this.frameSpeed = 0.99;
         this.frameTimer = 0;
         this.numFrames = 6;
         // adicionando corpo ao mundo
@@ -148,28 +149,28 @@ export class player {
     }
     attack(key) {
         if (key.attackPressed && !this.isAttacking) {
-            this.startAttack();
+            this.startAttack(key);
         }
     
         // resetar clique
         key.attackPressed = false;
     }
     
-    startAttack() {
+    startAttack(key) {
         this.isAttacking = true;
     
         this.attackStep++;
-        if (this.attackStep > 3) this.attackStep = 1;
-    
-        if (this.attackStep === 1) {
+        if (this.attackStep > 2) this.attackStep = 1;
+
+        if (key.attackArc) {
+            this.frameY = 4;
+            this.numFrames = 9;
+        } else if (this.attackStep === 1) {
             this.frameY = 2;
             this.numFrames = 6;
         } else if (this.attackStep === 2) {
             this.frameY = 3;
             this.numFrames = 6;
-        } else if (this.attackStep === 3) {
-            this.frameY = 4;
-            this.numFrames = 9;
         }
     
         this.frameX = 0;

@@ -116,3 +116,13 @@ function createCorridor(a, b) {
 for (let i = 0; i < rooms.length - 1; i++) {
     createCorridor(rooms[i], rooms[i + 1]);
 }
+
+export function getRandomPositionInRoom(room) {
+  const x = room.x + 1 + Math.floor(Math.random() * (room.width - 2));
+  const y = room.y + 1 + Math.floor(Math.random() * (room.height - 2));
+
+  return {
+    x: x * tile,
+    y: y * tile
+  };
+}
