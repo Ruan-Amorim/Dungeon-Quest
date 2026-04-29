@@ -5,7 +5,7 @@ import { dataItens } from "./data/dataItens.js";
 import { ITEMS } from "./itens.js";
 import { Orc } from "./enemys/orc.js";
 
-const { Engine, Runner, Bodies, Composite, Events } = Matter;
+const { Engine, Runner, Bodies, Composite, Events, Body } = Matter;
 
 
 let worldScale = 1;
@@ -426,8 +426,15 @@ function renderLoop() {
         drop.draw(ctx, camera);
       }
     }
+    const margin = 100
     for (const orc of orcs) {
       if (!orc.collected) {
+        const x = orc.body.position.x;
+        const y = orc.body.position.y;
+
+        const visible = x > camera.x - margin && x < camera.x + canvas.width / worldScale + margin && y > camera.y - margin && y < camera.y + canvas.height / worldScale + margin;
+
+        if (!visible) continue;
         orc.update();
         orc.draw(ctx, camera);
       }
@@ -436,22 +443,74 @@ function renderLoop() {
     ctx.restore();
     requestAnimationFrame(renderLoop);
 }
+const visited = new Set();
 
 for (let y = 0; y < tilemap.length; y++) {
   for (let x = 0; x < tilemap[y].length; x++) {
 
-    if (tilemap[y][x] === 1) {
+    if (tilemap[y][x] !== 1) continue;
+    const isInternal =
+    tilemap[y - 1]?.[x] === 1 &&
+    tilemap[y + 1]?.[x] === 1 &&
+    tilemap[y]?.[x - 1] === 1 &&
+    tilemap[y]?.[x + 1] === 1 &&
+    tilemap[y - 1]?.[x - 1] === 1 &&
+    tilemap[y - 1]?.[x + 1] === 1 &&
+    tilemap[y + 1]?.[x - 1] === 1 &&
+    tilemap[y + 1]?.[x + 1] === 1;
 
-      const wall = Bodies.rectangle(
-        x * tile + tile / 2,
-        y * tile + tile / 2,
-        tile,
-        tile,
-        { isStatic: true, label: "wall" }
-      );
+    if (isInternal) continue;
 
-      Composite.add(engine.world, wall);
+    const key = `${x},${y}`;
+    if (visited.has(key)) continue;
+
+    // 1. largura
+    let width = 1;
+    while (
+      tilemap[y]?.[x + width] === 1 &&
+      !visited.has(`${x + width},${y}`)
+    ) {
+      width++;
     }
+
+    // 2. altura (checando toda a largura)
+    let height = 1;
+    let canExpand = true;
+
+    while (canExpand) {
+      for (let i = 0; i < width; i++) {
+        if (
+          tilemap[y + height]?.[x + i] !== 1 ||
+          visited.has(`${x + i},${y + height}`)
+        ) {
+          canExpand = false;
+          break;
+        }
+      }
+
+      if (canExpand) height++;
+    }
+
+    // marcar tudo como visitado
+    for (let dy = 0; dy < height; dy++) {
+      for (let dx = 0; dx < width; dx++) {
+        visited.add(`${x + dx},${y + dy}`);
+      }
+    }
+
+    // criar 1 body grande
+    const wall = Bodies.rectangle(
+      (x + width / 2) * tile,
+      (y + height / 2) * tile,
+      tile * width,
+      tile * height,
+      {
+        isStatic: true,
+        label: "wall"
+      }
+    );
+
+    Composite.add(engine.world, wall);
   }
 }
 
@@ -487,7 +546,7 @@ window.addEventListener("keyup", (e) => {
     }
 });
 
-const audio = new Audio("../assests/sounds/Cinematic/dungeonsuspense.mp3");
+const audio = new Audio("../assests/sounds/Cinematic/cavernadecristal.mp3");
 audio.volume = 0;
 audio.play();
 
@@ -540,7 +599,44 @@ Events.on(engine, "collisionStart", (event) => {
 
     const itemBody = a.label === "item" ? a : b.label === "item" ? b : null;
     const playerBody = a.label === "player" ? a : b.label === "player" ? b : null;
+    
+    // hitbox attack
+    if (a.label === "playerAttack" && b.label === "enemy") {
+      const nemesis = b.gameObject;
+      const player = a.owner;
 
+      nemesis.takeDamage(player.STR);
+      // knokback
+      const dx = b.position.x - player.body.position.x;
+      const dy = b.position.y - player.body.position.y;
+      const length = Math.sqrt(dx * dx + dy * dy) || 1;
+
+      const nx = dx / length;
+      const ny = dy / length;
+
+      Body.applyForce(b,b.position, {
+        x: nx * 32,
+        y: ny * 32,
+      });
+    } else if (b.label === "playerAttack" && a.label === "enemy") {
+      const nemesis = a.gameObject;
+      const player = b.owner;
+
+      nemesis.takeDamage(player.STR);
+      // knokback
+      const dx = b.position.x - player.body.position.x;
+      const dy = b.position.y - player.body.position.y;
+      const length = Math.sqrt(dx * dx + dy * dy) || 1;
+
+      const nx = dx / length;
+      const ny = dy / length;
+
+      Body.applyForce(a,a.position, {
+        x: nx * 32,
+        y: ny * 32,
+      });
+    }
+    // pegar item
     if (!itemBody || !playerBody) continue;
 
     itemEmContato = itemBody.itemRef;
@@ -566,7 +662,7 @@ Events.on(engine, "collisionEnd", (event) => {
 Events.on(engine, "beforeUpdate", () => {
 
   ladino.updateMove(keys);
-  ladino.attack(keys, orcs);
+  ladino.attack(keys);
 
   if (keys.pegarItem && itemEmContato) {
 
@@ -584,6 +680,11 @@ Events.on(engine, "beforeUpdate", () => {
 });
 
 
-
+const bodies = Composite.allBodies(engine.world);
+        let count = {};
+        for (let b of bodies) {
+            count[b.label] = (count[b.label] || 0) + 1;
+        }
+        console.log(count)
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();

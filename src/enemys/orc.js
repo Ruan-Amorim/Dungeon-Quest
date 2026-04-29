@@ -10,7 +10,7 @@ export class Orc {
         this.speed = 2;
         this.player = player;
         this.isAlive = true;
-        
+
         this.animState = "idle";
         this.hitTime = 0;
 
@@ -27,11 +27,11 @@ export class Orc {
             tile,
             {
                 inertia: Infinity,
-                frictionAir: 0.1, 
+                frictionAir: 0.2, 
                 label: "enemy",
             }
           );
-
+        this.body.gameObject = this; // referência ao orc
         this.sprite = new Image();
         this.sprite.src = "./assests/sprites/Character/Orc/Orc/Orc.png";
         this.frameX = 0; // coluna

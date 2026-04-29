@@ -13,7 +13,6 @@ const keys = {
     attackArc: false,
     pegarItem: false,
 }
-
 export function getItens(engine, ctx, x, y, camera) {
     const categorias = Object.values(dataItens);
     const categoria = categorias[x];

@@ -5,7 +5,8 @@ const { Bodies, Composite, Body } = Matter;
 
 export class player {
     constructor(engine) {
-        this.HP = 20; // vida
+        this.HP = 20; // vida atual
+        this.MAX_HP = 20; // maximo de vida
         this.MP = 10; // mana
         this.STR = 5; // força
         this.INT = 5; // inteligência
@@ -13,6 +14,7 @@ export class player {
         this.speed = 5;
         this.isAlive = true;
 
+        this.hitboxActive = false;
         this.isAttacking = false;
         this.attackArc =  false;
         this.attackStep = 0;
@@ -26,7 +28,8 @@ export class player {
             frictionAir: 0.1, // um pouco de resistência para parar suave
             label: "player",
         });
-
+        this.engine = engine;
+        this.camera;
         // Assets
         this.sprite = new Image();
         this.sprite.src = "../assests/sprites/Character/Soldier/Soldier/Soldier.png";
@@ -180,8 +183,10 @@ export class player {
         const pos = this.body.position;
         const scale = 2; // tamanho
         const flipX = this.flip ? -1 : 1;
-        ctx.save();
+        
+        this.camera = camera;
 
+        ctx.save();
         const x = pos.x - camera.x;
         const y = pos.y - camera.y;
 
@@ -202,9 +207,9 @@ export class player {
 
         ctx.restore();
     }
-    attack(key, enemies) {
+    attack(key) {
         if (key.attackPressed && !this.isAttacking) {
-            this.startAttack(key, enemies);
+            this.startAttack(key);
         }
         key.attackPressed = false;
     }
@@ -237,9 +242,14 @@ export class player {
         const player_hp = document.getElementById("player_hp");
         player_hp.innerText = `HP: ${this.HP}`;
     }
-    startAttack(key, enemies) {
+    startAttack(key) {
         this.isAttacking = true;
-    
+        if (this.hitboxActive === true) return;
+
+        this.hitboxActive = true;
+
+        const range = 45;
+
         this.attackStep++;
         if (this.attackStep > 2) this.attackStep = 1;
 
@@ -253,24 +263,23 @@ export class player {
             this.frameY = 3;
             this.numFrames = 6;
         }
-    
-        this.frameX = 0;
-        // =========================
-        // AQUI ACONTECE O DANO
-        // =========================
-        enemies.forEach(enemy => {
-            if (!enemy.isAlive) return;
 
-            const dx = enemy.body.position.x - this.body.position.x;
-            const dy = enemy.body.position.y - this.body.position.y;
-
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            const attackRange = 60;
-
-            if (distance < attackRange) {
-                enemy.takeDamage(this.STR);
+        const hitbox = Bodies.circle(
+            this.body.position.x,
+            this.body.position.y,
+            range,
+            {
+                isSensor: true,
+                isStatic: true,
+                label: "playerAttack",
+                owner: this, // referência ao player
             }
-        });
+        );
+        Composite.add(this.engine.world, hitbox);
+        
+        setTimeout(() => {
+            Composite.remove(this.engine.world, hitbox);
+            this.hitboxActive = false;
+        }, 80);
     }
 };
