@@ -17,6 +17,9 @@ export class player {
         this.attackArc =  false;
         this.attackStep = 0;
 
+        this.hitTimer = 0;
+        this.animState = "idle";
+
         // Criando o corpo físico (avatar)
         this.body = Bodies.rectangle(positionInicialX, positionInicialY, tile, tile, {
             inertia: Infinity, // impede de girar
@@ -40,9 +43,12 @@ export class player {
         Composite.add(engine.world, this.body);
     }
     updateMove(key) {
-        if (this.isAlive = false) return;
+        if (!this.isAlive) return;
+        if (this.animState === "dead") return;
+
         let velX = 0;
         let velY = 0;
+        if (this.animState !== "hit") {
     
         if (key.left) {
             if (this.isAttacking == false) {
@@ -97,28 +103,77 @@ export class player {
         }
     
         Body.setVelocity(this.body, { x: velX, y: velY });
+        }
     }
     updateAnimation() {
         this.frameTimer += this.frameSpeed;
-    
-        if (this.frameTimer >= 1) {
-            this.frameX++;
-            this.frameTimer = 0;
-    
-            if (this.isAttacking) {
-                if (this.frameX >= this.numFrames) {
-                    this.isAttacking = false;
-    
-                    // volta pro idle
-                    this.frameY = 0;
-                    this.numFrames = 6;
-                    this.frameX = 0;
-                }
+        if (this.frameTimer < 1) return;
+
+        this.frameTimer = 0;
+
+        // =====================
+        // DEAD (fixa linha + animação única)
+        // =====================
+        if (this.animState === "dead") {
+
+            // fixa a linha da animação de morte SEMPRE
+            this.frameY = 6; // <-- linha da morte no sprite sheet
+
+            // avança até o último frame
+            if (this.frameX < this.numFrames - 1) {
+                this.frameX++;
             } else {
-                if (this.frameX >= this.numFrames) {
-                    this.frameX = 0;
-                }
+                this.frameX = this.numFrames - 1; // trava no último frame
             }
+
+            return; // bloqueia qualquer outra lógica
+        }
+
+        this.frameX++;
+
+        
+        // =====================
+        // HIT (SEM frameTimer BUGADO)
+        // =====================
+        if (this.animState === "hit") {
+
+            this.frameY = 5;
+
+            // controla tempo do hit
+            if (performance.now() > this.hitTime) {
+                this.animState = "idle";
+                this.frameX = 0;
+                this.numFrames = 6;
+                return;
+            }
+
+            // animação simples sem frameTimer travando
+            this.frameTimer += this.frameSpeed;
+            if (this.frameTimer >= 1) {
+                this.frameTimer = 0;
+                this.frameX = (this.frameX + 1) % this.numFrames;
+            }
+
+            return;
+        }
+        // =====================
+        // ATTACK
+        // =====================
+        if (this.isAttacking) {
+            if (this.frameX >= this.numFrames) {
+                this.isAttacking = false;
+                this.animState = "idle";
+                this.frameY = 0;
+                this.numFrames = 6;
+                this.frameX = 0;
+            }
+            return;
+        }
+        // =====================
+        // IDLE / MOVE
+        // =====================
+        if (this.frameX >= this.numFrames) {
+            this.frameX = 0;
         }
     }
     draw(ctx, camera) {
@@ -147,16 +202,42 @@ export class player {
 
         ctx.restore();
     }
-    attack(key) {
+    attack(key, enemies) {
         if (key.attackPressed && !this.isAttacking) {
-            this.startAttack(key);
+            this.startAttack(key, enemies);
         }
-    
-        // resetar clique
         key.attackPressed = false;
     }
+    takeDamage(dano) {
+        if (this.animState === "dead") return;
     
-    startAttack(key) {
+        this.HP -= dano;
+    
+        if (this.HP <= 0) {
+            this.isAlive = false;
+            this.animState = "dead";
+            this.HP = 0;
+            this.frameX = 0;
+            this.frameY = 6;   // linha da morte
+            this.numFrames = 4;
+            this.upDateStatus();
+            return;
+        }
+    
+        this.animState = "hit";
+        this.hitTime = performance.now() + 120;
+    
+        this.frameX = 0;
+        this.frameY = 5;
+        this.numFrames = 4;
+    
+        this.upDateStatus();
+    }
+    upDateStatus() {
+        const player_hp = document.getElementById("player_hp");
+        player_hp.innerText = `HP: ${this.HP}`;
+    }
+    startAttack(key, enemies) {
         this.isAttacking = true;
     
         this.attackStep++;
@@ -174,9 +255,22 @@ export class player {
         }
     
         this.frameX = 0;
-    }
-    takeDamage(dano) {
-        this.HP -= dano;
-        if (this.HP <= 0) this.isAlive = false;
+        // =========================
+        // AQUI ACONTECE O DANO
+        // =========================
+        enemies.forEach(enemy => {
+            if (!enemy.isAlive) return;
+
+            const dx = enemy.body.position.x - this.body.position.x;
+            const dy = enemy.body.position.y - this.body.position.y;
+
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            const attackRange = 60;
+
+            if (distance < attackRange) {
+                enemy.takeDamage(this.STR);
+            }
+        });
     }
 };

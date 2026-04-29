@@ -1,8 +1,9 @@
 import { tilemap } from "./tilemap.js";
 import { player } from "./player.js";
-import keys, { getItens, tile } from "./utils.js";
+import keys, { tile } from "./utils.js";
 import { dataItens } from "./data/dataItens.js";
 import { ITEMS } from "./itens.js";
+import { Orc } from "./enemys/orc.js";
 
 const { Engine, Runner, Bodies, Composite, Events } = Matter;
 
@@ -66,7 +67,7 @@ tileset.onload = () => {
 
 const drops = [];
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 10; i++) {
       const categorias = Object.values(dataItens);
 
       const tipo = Math.floor(Math.random() * categorias.length);
@@ -81,6 +82,12 @@ const drops = [];
 
       drops.push(drop);
     }
+const orcs = [];
+
+for (let i = 0; i < 8; i++) {
+  const orc = new Orc(engine, ladino);
+  orcs.push(orc); 
+}
 
 function renderLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -419,6 +426,12 @@ function renderLoop() {
         drop.draw(ctx, camera);
       }
     }
+    for (const orc of orcs) {
+      if (!orc.collected) {
+        orc.update();
+        orc.draw(ctx, camera);
+      }
+    }
     ladino.draw(ctx, camera);
     ctx.restore();
     requestAnimationFrame(renderLoop);
@@ -474,7 +487,7 @@ window.addEventListener("keyup", (e) => {
     }
 });
 
-const audio = new Audio("../assests/sounds/Cinematic/DevilTheDungeon.mp3");
+const audio = new Audio("../assests/sounds/Cinematic/dungeonsuspense.mp3");
 audio.volume = 0;
 audio.play();
 
@@ -553,7 +566,7 @@ Events.on(engine, "collisionEnd", (event) => {
 Events.on(engine, "beforeUpdate", () => {
 
   ladino.updateMove(keys);
-  ladino.attack(keys);
+  ladino.attack(keys, orcs);
 
   if (keys.pegarItem && itemEmContato) {
 
@@ -569,6 +582,8 @@ Events.on(engine, "beforeUpdate", () => {
     keys.pegarItem = false; // evita pegar várias vezes
   }
 });
+
+
 
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();

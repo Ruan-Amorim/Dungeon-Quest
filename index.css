@@ -28,3 +28,10 @@ canvas {
     background: #f2f2f2;
     
 }
+#player_hp {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 1.2;
+    color: whitesmoke;
+}
